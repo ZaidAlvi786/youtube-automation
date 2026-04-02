@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChannelCard } from "@/components/channel-card";
 import { getChannels } from "@/lib/api";
-import type { Channel } from "@/lib/types";
+import type { Channel, DiscoveryStats } from "@/lib/types";
 
 export default function ChannelsPage() {
   const [query, setQuery] = useState("");
@@ -14,6 +14,7 @@ export default function ChannelsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"search" | "discover">("search");
+  const [meta, setMeta] = useState<DiscoveryStats | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +27,8 @@ export default function ChannelsPage() {
         discover: mode === "discover",
         max_results: mode === "discover" ? 50 : 10,
       });
-      setChannels(results);
+      setChannels(results.data);
+      setMeta(results.meta ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to search channels");
     } finally {
@@ -119,12 +121,48 @@ export default function ChannelsPage() {
 
       {/* Discovery empty state */}
       {!loading && channels.length === 0 && mode === "discover" && query && (
-        <div className="rounded-xl border border-border/40 bg-card/50 p-8 text-center">
+        <div className="rounded-xl border border-border/40 bg-card/50 p-8 text-center max-w-2xl mx-auto">
           <span className="text-4xl">🚀</span>
-          <p className="mt-3 font-semibold">Discovery in Progress</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Background discovery has been started. Refresh in a minute to see results.
+          <p className="mt-3 font-semibold text-lg">Discovery in Progress</p>
+          <p className="text-sm text-muted-foreground mt-1 mb-6">
+            We're scanning YouTube for rising stars in this niche. This usually takes a minute.
           </p>
+          
+          {meta && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-left border-t border-border/40 pt-6 mt-6">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Scanned</p>
+                <p className="text-xl font-mono">{meta.total_scanned}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Too Old</p>
+                <p className="text-xl font-mono text-orange-400">{meta.rejected_age}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Low Performance</p>
+                <p className="text-xl font-mono text-red-400">{meta.rejected_performance}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Known</p>
+                <p className="text-xl font-mono text-blue-400">{meta.already_known}</p>
+              </div>
+              <div className="space-y-1 col-span-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Status</p>
+                <p className="text-sm font-medium text-cyan-400 animate-pulse capitalize">
+                  {meta.status?.replace(/_/g, " ") || "Processing..."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="mt-6"
+            onClick={handleSearch}
+          >
+            🔄 Refresh Status
+          </Button>
         </div>
       )}
 
